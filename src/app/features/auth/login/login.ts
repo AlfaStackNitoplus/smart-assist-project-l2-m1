@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { UserService } from '../../../core/services/user.service';
 import { UserRole } from '../../../core/models/user.model';
 import { MockData } from '../../../assets/mock-data';
+import { Auth } from '../../../core/services/auth';
 
 @Component({
   selector: 'app-login',
@@ -28,29 +29,71 @@ import { MockData } from '../../../assets/mock-data';
   styleUrl: './login.scss',
 })
 export class Login {
+
   private router = inject(Router);
   private userService = inject(UserService);
+  private authService = inject(Auth);
 
   username = '';
   password = '';
+  isLoading = false;
 
   onLogin() {
-    // Requirement 8: All intelligence moves to Services
-    const user = MockData.users.find(
-      u => u.email === this.username && u.password === this.password
-    );
 
-    if (!user) {
-      alert('Invalid email or password');
+    if (!this.username || !this.password) {
+      alert('Please enter email and password');
       return;
     }
 
-    // Requirement 5: Update shared state via BehaviorSubject in UserService
-    this.userService.setCurrentUser(user);
+    this.isLoading = true;
 
-    // Requirement 4/8: Use reactive-driven navigation
-    const route = this.getRouteByRole(user.role);
-    this.router.navigate([route]);
+    const request = {
+      email: this.username,
+      password: this.password
+    };
+
+    this.authService.login(request).subscribe({
+      next: (response) => {
+
+        this.isLoading = false;
+
+        if (!response.success) {
+          alert(response.message || 'Login failed');
+          return;
+        }
+
+        // Store token
+        localStorage.setItem(
+          'accessToken',
+          response.token.accessToken
+        );
+
+        localStorage.setItem(
+          'refreshToken',
+          response.token.refreshToken
+        );
+
+        // Store user in shared UserService
+        this.userService.setCurrentUser(response.user);
+
+        // Navigate based on role
+        const route = this.getRouteByRole(response.user.role);
+
+        this.router.navigate([route]);
+      },
+
+      error: (error) => {
+
+        this.isLoading = false;
+
+        console.error('Login API error:', error);
+
+        alert(
+          error?.error?.message ||
+          'Unable to login. Please try again.'
+        );
+      }
+    });
   }
 
 private getRouteByRole(role: UserRole): string {
