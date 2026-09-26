@@ -10,7 +10,6 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { UserService } from '../../../core/services/user.service';
 import { UserRole } from '../../../core/models/user.model';
-import { MockData } from '../../../assets/mock-data';
 import { Auth } from '../../../core/services/auth';
 
 @Component({
